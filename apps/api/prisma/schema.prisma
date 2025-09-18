@@ -1,0 +1,163 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  MODERATOR
+  FINANCE
+  ADMIN
+}
+
+enum Category {
+  ELECTRONICS
+  FASHION
+  FURNITURE
+  CARS
+  JOBS
+  SERVICES
+  DIGITAL
+  RENTALS
+  EVENTS
+  BEAUTY
+  FOOD
+}
+
+enum ListingStatus {
+  ACTIVE
+  PAUSED
+  SOLD
+  DELETED
+}
+
+enum ReservationStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+  REFUNDED
+}
+
+model User {
+  id            String   @id @default(cuid())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  email         String?  @unique
+  phone         String?  @unique
+  passwordHash  String?
+  displayName   String
+  avatarUrl     String?
+  isVerified    Boolean  @default(false)
+  roles         Role[]   @default([USER])
+  rating        Float    @default(0)
+  reviewsCount  Int      @default(0)
+  badges        String[] @default([])
+
+  listings      Listing[] @relation("UserListings")
+  reservations  Reservation[] @relation("UserReservations")
+  orders        Order[]
+  messages      Message[] @relation("UserMessages")
+}
+
+model Listing {
+  id           String   @id @default(cuid())
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  title        String
+  description  String
+  price        Int
+  currency     String   @default("DZD")
+  category     Category
+  images       String[]
+  city         String
+  lat          Float?
+  lng          Float?
+  status       ListingStatus @default(ACTIVE)
+  seller       User     @relation("UserListings", fields: [sellerId], references: [id])
+  sellerId     String
+
+  reservations Reservation[]
+}
+
+model Reservation {
+  id           String   @id @default(cuid())
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  start        DateTime
+  end          DateTime
+  status       ReservationStatus @default(PENDING)
+  city         String
+  notes        String?
+
+  user         User     @relation("UserReservations", fields: [userId], references: [id])
+  userId       String
+
+  listing      Listing? @relation(fields: [listingId], references: [id])
+  listingId    String?
+
+  payment      Payment?
+}
+
+model Order {
+  id           String   @id @default(cuid())
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  total        Int
+  currency     String   @default("DZD")
+  cod          Boolean  @default(false)
+  buyer        User     @relation(fields: [buyerId], references: [id])
+  buyerId      String
+  listing      Listing  @relation(fields: [listingId], references: [id])
+  listingId    String
+  payment      Payment?
+  delivery     Delivery?
+}
+
+model Payment {
+  id           String   @id @default(cuid())
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  amount       Int
+  currency     String   @default("DZD")
+  method       String
+  providerRef  String?
+  status       String   @default("pending")
+  escrow       Boolean  @default(true)
+
+  order        Order?   @relation(fields: [orderId], references: [id])
+  orderId      String?
+  reservation  Reservation? @relation(fields: [reservationId], references: [id])
+  reservationId String?
+}
+
+model Delivery {
+  id           String   @id @default(cuid())
+  createdAt    DateTime @default(now())
+  provider     String
+  tracking     String?
+  etaDays      Int?
+  order        Order    @relation(fields: [orderId], references: [id])
+  orderId      String   @unique
+}
+
+model Conversation {
+  id        String    @id @default(cuid())
+  createdAt DateTime  @default(now())
+  users     User[]
+  messages  Message[]
+}
+
+model Message {
+  id             String   @id @default(cuid())
+  createdAt      DateTime @default(now())
+  body           String
+  sender         User     @relation("UserMessages", fields: [senderId], references: [id])
+  senderId       String
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  conversationId String
+}
