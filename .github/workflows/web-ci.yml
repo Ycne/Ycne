@@ -1,0 +1,25 @@
+name: Web CI
+on:
+  push:
+    paths:
+      - 'apps/web/**'
+  pull_request:
+    paths:
+      - 'apps/web/**'
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+      - name: Install
+        run: bun install --frozen-lockfile
+        working-directory: apps/web
+      - name: Typecheck
+        run: bunx tsc --noEmit
+        working-directory: apps/web
+      - name: Build
+        run: bunx vite build
+        working-directory: apps/web
